@@ -2,6 +2,8 @@ package me.loki2302;
 
 import java.io.IOException;
 
+import me.loki2302.progress.NewTaskAppeared;
+import me.loki2302.progress.TaskDone;
 import me.loki2302.tasks.Task;
 
 import com.rabbitmq.client.Channel;
@@ -23,8 +25,19 @@ public class WorkerService {
     
     public void submitTask(Task task) {
         byte[] taskBytes = jsonSerializer.serialize(task);            
+        byte[] progressBytes = jsonSerializer.serialize(new NewTaskAppeared());
         try {
             channel.basicPublish("", Rabbit.TASK_QUEUE_NAME, null, taskBytes);
+            channel.basicPublish("", Rabbit.TASK_PROGRESS_QUEUE_NAME, null, progressBytes);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+    
+    public void submitTaskDone() {          
+        byte[] progressBytes = jsonSerializer.serialize(new TaskDone());
+        try {
+            channel.basicPublish("", Rabbit.TASK_PROGRESS_QUEUE_NAME, null, progressBytes);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

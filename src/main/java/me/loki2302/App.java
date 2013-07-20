@@ -18,8 +18,12 @@ public class App {
         connectionFactory.setHost(Config.RabbitHostName);
         Connection connection = connectionFactory.newConnection();
         Channel channel = connection.createChannel();
+        channel.queueDeclare(Rabbit.TASK_QUEUE_NAME, false, false, false, null);
+        channel.queueDeclare(Rabbit.TASK_PROGRESS_QUEUE_NAME, false, false, false, null);
+        channel.queueDeclare(Rabbit.RESULT_QUEUE_NAME, false, false, false, null);
         channel.queueDelete(Rabbit.TASK_QUEUE_NAME);
-        channel.queueDelete(Rabbit.RESULT_QUEUE_NAME);
+        channel.queueDelete(Rabbit.TASK_PROGRESS_QUEUE_NAME);
+        channel.queueDelete(Rabbit.RESULT_QUEUE_NAME);        
         channel.close();
         connection.close();
         
@@ -63,7 +67,14 @@ public class App {
             JsonSerializer jsonSerializer = new JsonSerializer(objectMapper);
             QueueingConsumer resultConsumer = new QueueingConsumer(channel);
             channel.basicConsume(Rabbit.RESULT_QUEUE_NAME, true, resultConsumer);
-            ManagementService managementService = new ManagementService(jsonSerializer, channel, resultConsumer);
+            QueueingConsumer taskProgressConsumer = new QueueingConsumer(channel);
+            channel.basicConsume(Rabbit.TASK_PROGRESS_QUEUE_NAME, true, taskProgressConsumer);
+            ManagementService managementService = new ManagementService(
+                    jsonSerializer, 
+                    channel, 
+                    resultConsumer, 
+                    taskProgressConsumer);
+            
             return managementService;
         } catch(IOException e) {
             throw new RuntimeException(e);
@@ -91,6 +102,7 @@ public class App {
             Connection connection = connectionFactory.newConnection();
             Channel channel = connection.createChannel();                       
             channel.queueDeclare(Rabbit.TASK_QUEUE_NAME, false, false, false, null);
+            channel.queueDeclare(Rabbit.TASK_PROGRESS_QUEUE_NAME, false, false, false, null);
             channel.queueDeclare(Rabbit.RESULT_QUEUE_NAME, false, false, false, null);
             return channel;
         } catch(IOException e) {

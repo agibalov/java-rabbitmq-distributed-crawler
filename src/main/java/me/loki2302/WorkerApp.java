@@ -33,6 +33,7 @@ public class WorkerApp implements TaskVisitor {
                     e.printStackTrace();
                 }                    
             }
+            workerService.submitTaskDone();
         }
     }
 
