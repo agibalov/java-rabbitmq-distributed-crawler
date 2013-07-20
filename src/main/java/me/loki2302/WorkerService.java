@@ -24,7 +24,7 @@ public class WorkerService {
     public void submitTask(Task task) {
         byte[] taskBytes = jsonSerializer.serialize(task);            
         try {
-            channel.basicPublish("", "task-queue", null, taskBytes);
+            channel.basicPublish("", Rabbit.TASK_QUEUE_NAME, null, taskBytes);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -47,7 +47,7 @@ public class WorkerService {
     public void submitResult(String result) {
         byte[] resultBytes = jsonSerializer.serialize(result);            
         try {
-            channel.basicPublish("", "result-queue", null, resultBytes);
+            channel.basicPublish("", Rabbit.RESULT_QUEUE_NAME, null, resultBytes);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

@@ -24,7 +24,7 @@ public class ManagementService {
     public void submitTask(Task task) {
         byte[] taskBytes = jsonSerializer.serialize(task);            
         try {
-            channel.basicPublish("", "task-queue", null, taskBytes);
+            channel.basicPublish("", Rabbit.TASK_QUEUE_NAME, null, taskBytes);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
