@@ -19,10 +19,10 @@ public class App {
         Connection connection = connectionFactory.newConnection();
         Channel channel = connection.createChannel();
         channel.queueDeclare(Rabbit.TASK_QUEUE_NAME, false, false, false, null);
+        channel.queueDelete(Rabbit.TASK_QUEUE_NAME);        
         channel.queueDeclare(Rabbit.TASK_PROGRESS_QUEUE_NAME, false, false, false, null);
+        channel.queueDelete(Rabbit.TASK_PROGRESS_QUEUE_NAME);        
         channel.queueDeclare(Rabbit.RESULT_QUEUE_NAME, false, false, false, null);
-        channel.queueDelete(Rabbit.TASK_QUEUE_NAME);
-        channel.queueDelete(Rabbit.TASK_PROGRESS_QUEUE_NAME);
         channel.queueDelete(Rabbit.RESULT_QUEUE_NAME);        
         channel.close();
         connection.close();
