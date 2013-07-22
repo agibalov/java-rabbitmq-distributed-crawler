@@ -27,8 +27,8 @@ public class WorkerService {
         byte[] taskBytes = jsonSerializer.serialize(task);            
         byte[] progressBytes = jsonSerializer.serialize(new NewTaskAppeared());
         try {
-            channel.basicPublish("", Rabbit.TASK_QUEUE_NAME, null, taskBytes);
-            channel.basicPublish("", Rabbit.TASK_PROGRESS_QUEUE_NAME, null, progressBytes);
+            channel.basicPublish("", CrawlerProtocol.TASK_QUEUE_NAME, null, taskBytes);
+            channel.basicPublish("", CrawlerProtocol.TASK_PROGRESS_QUEUE_NAME, null, progressBytes);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -37,7 +37,7 @@ public class WorkerService {
     public void submitTaskDone() {          
         byte[] progressBytes = jsonSerializer.serialize(new TaskDone());
         try {
-            channel.basicPublish("", Rabbit.TASK_PROGRESS_QUEUE_NAME, null, progressBytes);
+            channel.basicPublish("", CrawlerProtocol.TASK_PROGRESS_QUEUE_NAME, null, progressBytes);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -60,7 +60,7 @@ public class WorkerService {
     public void submitResult(String result) {
         byte[] resultBytes = jsonSerializer.serialize(result);            
         try {
-            channel.basicPublish("", Rabbit.RESULT_QUEUE_NAME, null, resultBytes);
+            channel.basicPublish("", CrawlerProtocol.RESULT_QUEUE_NAME, null, resultBytes);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

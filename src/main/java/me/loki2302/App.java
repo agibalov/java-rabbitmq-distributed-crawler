@@ -12,18 +12,14 @@ import com.rabbitmq.client.ConnectionFactory;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.QueueingConsumer;
 
-public class App {
+public class App {    
     public static void main(String[] args) throws InterruptedException, IOException {        
         ConnectionFactory connectionFactory = new ConnectionFactory();
         connectionFactory.setHost(Config.RabbitHostName);
         Connection connection = connectionFactory.newConnection();
         Channel channel = connection.createChannel();
-        channel.queueDeclare(Rabbit.TASK_QUEUE_NAME, false, false, false, null);
-        channel.queueDelete(Rabbit.TASK_QUEUE_NAME);        
-        channel.queueDeclare(Rabbit.TASK_PROGRESS_QUEUE_NAME, false, false, false, null);
-        channel.queueDelete(Rabbit.TASK_PROGRESS_QUEUE_NAME);        
-        channel.queueDeclare(Rabbit.RESULT_QUEUE_NAME, false, false, false, null);
-        channel.queueDelete(Rabbit.RESULT_QUEUE_NAME);        
+        CrawlerProtocol.initialize(channel);
+        CrawlerProtocol.reset(channel);        
         channel.close();
         connection.close();
         
@@ -66,9 +62,9 @@ public class App {
             ObjectMapper objectMapper = new ObjectMapper();
             JsonSerializer jsonSerializer = new JsonSerializer(objectMapper);
             QueueingConsumer resultConsumer = new QueueingConsumer(channel);
-            channel.basicConsume(Rabbit.RESULT_QUEUE_NAME, true, resultConsumer);
+            channel.basicConsume(CrawlerProtocol.RESULT_QUEUE_NAME, true, resultConsumer);
             QueueingConsumer taskProgressConsumer = new QueueingConsumer(channel);
-            channel.basicConsume(Rabbit.TASK_PROGRESS_QUEUE_NAME, true, taskProgressConsumer);
+            channel.basicConsume(CrawlerProtocol.TASK_PROGRESS_QUEUE_NAME, true, taskProgressConsumer);
             ManagementService managementService = new ManagementService(
                     jsonSerializer, 
                     channel, 
@@ -87,7 +83,7 @@ public class App {
             ObjectMapper objectMapper = new ObjectMapper();
             JsonSerializer jsonSerializer = new JsonSerializer(objectMapper);
             QueueingConsumer taskConsumer = new QueueingConsumer(channel);
-            channel.basicConsume(Rabbit.TASK_QUEUE_NAME, true, taskConsumer);
+            channel.basicConsume(CrawlerProtocol.TASK_QUEUE_NAME, true, taskConsumer);
             WorkerService workerService = new WorkerService(jsonSerializer, channel, taskConsumer);
             return workerService;
         } catch(IOException e) {
@@ -101,9 +97,7 @@ public class App {
             connectionFactory.setHost(rabbitHostName);
             Connection connection = connectionFactory.newConnection();
             Channel channel = connection.createChannel();                       
-            channel.queueDeclare(Rabbit.TASK_QUEUE_NAME, false, false, false, null);
-            channel.queueDeclare(Rabbit.TASK_PROGRESS_QUEUE_NAME, false, false, false, null);
-            channel.queueDeclare(Rabbit.RESULT_QUEUE_NAME, false, false, false, null);
+            CrawlerProtocol.initialize(channel);
             return channel;
         } catch(IOException e) {
             throw new RuntimeException(e);

@@ -34,8 +34,8 @@ public class ManagementService {
         byte[] taskBytes = jsonSerializer.serialize(task);            
         byte[] progressBytes = jsonSerializer.serialize(new NewTaskAppeared());
         try {
-            channel.basicPublish("", Rabbit.TASK_QUEUE_NAME, null, taskBytes);
-            channel.basicPublish("", Rabbit.TASK_PROGRESS_QUEUE_NAME, null, progressBytes);
+            channel.basicPublish("", CrawlerProtocol.TASK_QUEUE_NAME, null, taskBytes);
+            channel.basicPublish("", CrawlerProtocol.TASK_PROGRESS_QUEUE_NAME, null, progressBytes);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
