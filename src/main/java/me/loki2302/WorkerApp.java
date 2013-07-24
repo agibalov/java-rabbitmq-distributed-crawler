@@ -25,6 +25,10 @@ public class WorkerApp implements TaskVisitor {
     public void run() {
         while(true) {
             Task task = workerService.consumeTask();            
+            if(task == null) {
+                continue;
+            }
+            
             while(true) {
                 try {
                     task.accept(this);

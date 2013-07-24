@@ -44,6 +44,6 @@ public class ManagerApp {
             }
         }
         
-        System.out.println("DONE!");
+        System.out.printf("DONE! There were %d players", playerCount);
     }
 }

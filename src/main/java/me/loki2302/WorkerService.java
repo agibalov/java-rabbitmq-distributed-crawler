@@ -1,68 +1,41 @@
 package me.loki2302;
 
-import java.io.IOException;
-
 import me.loki2302.progress.NewTaskAppeared;
+import me.loki2302.progress.ProgressMessage;
 import me.loki2302.progress.TaskDone;
 import me.loki2302.tasks.Task;
 
-import com.rabbitmq.client.Channel;
-import com.rabbitmq.client.ConsumerCancelledException;
-import com.rabbitmq.client.QueueingConsumer;
-import com.rabbitmq.client.ShutdownSignalException;
-import com.rabbitmq.client.QueueingConsumer.Delivery;
-
 public class WorkerService {
-    private final JsonSerializer jsonSerializer;
-    private final Channel channel;
-    private final QueueingConsumer taskConsumer;
+    private final MessageDestination<Task> taskDestination;
+    private final MessageDestination<ProgressMessage> taskProgressDestination;
+    private final MessageDestination<String> resultDestination;
+    private final MessageSource<Task> taskSource;
     
-    public WorkerService(JsonSerializer jsonSerializer, Channel channel, QueueingConsumer taskConsumer) {
-        this.jsonSerializer = jsonSerializer;
-        this.channel = channel;
-        this.taskConsumer = taskConsumer;
+    public WorkerService(
+            MessageDestination<Task> taskDestination,
+            MessageDestination<ProgressMessage> taskProgressDestination,
+            MessageDestination<String> resultDestination,
+            MessageSource<Task> taskSource) {
+        this.taskDestination = taskDestination;
+        this.taskProgressDestination = taskProgressDestination;
+        this.resultDestination = resultDestination;
+        this.taskSource = taskSource;
     }
     
     public void submitTask(Task task) {
-        byte[] taskBytes = jsonSerializer.serialize(task);            
-        byte[] progressBytes = jsonSerializer.serialize(new NewTaskAppeared());
-        try {
-            channel.basicPublish("", CrawlerProtocol.TASK_QUEUE_NAME, null, taskBytes);
-            channel.basicPublish("", CrawlerProtocol.TASK_PROGRESS_QUEUE_NAME, null, progressBytes);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        taskDestination.putMessage(task);
+        taskProgressDestination.putMessage(new NewTaskAppeared());
     }
     
     public void submitTaskDone() {          
-        byte[] progressBytes = jsonSerializer.serialize(new TaskDone());
-        try {
-            channel.basicPublish("", CrawlerProtocol.TASK_PROGRESS_QUEUE_NAME, null, progressBytes);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        taskProgressDestination.putMessage(new TaskDone());
     }
     
     public Task consumeTask() {
-        try {
-            Delivery delivery = taskConsumer.nextDelivery();               
-            Task task = jsonSerializer.deserialize(delivery.getBody(), Task.class);
-            return task;
-        } catch (ShutdownSignalException e) {
-            throw new RuntimeException(e);
-        } catch (ConsumerCancelledException e) {
-            throw new RuntimeException(e);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
+        return taskSource.getMessage();
     }
     
     public void submitResult(String result) {
-        byte[] resultBytes = jsonSerializer.serialize(result);            
-        try {
-            channel.basicPublish("", CrawlerProtocol.RESULT_QUEUE_NAME, null, resultBytes);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        resultDestination.putMessage(result);
     }
 }

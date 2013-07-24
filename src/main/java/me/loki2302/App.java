@@ -5,12 +5,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 
+import me.loki2302.progress.ProgressMessage;
+import me.loki2302.tasks.Task;
+
 import org.codehaus.jackson.map.ObjectMapper;
 
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
 import com.rabbitmq.client.Channel;
-import com.rabbitmq.client.QueueingConsumer;
 
 public class App {    
     public static void main(String[] args) throws InterruptedException, IOException {        
@@ -19,7 +21,7 @@ public class App {
         Connection connection = connectionFactory.newConnection();
         Channel channel = connection.createChannel();
         CrawlerProtocol.initialize(channel);
-        CrawlerProtocol.reset(channel);        
+        CrawlerProtocol.reset(channel);
         channel.close();
         connection.close();
         
@@ -57,38 +59,56 @@ public class App {
     }
     
     private static ManagementService makeManagementService(String rabbitHostName) {
-        try {
-            Channel channel = makeChannel(rabbitHostName);
-            ObjectMapper objectMapper = new ObjectMapper();
-            JsonSerializer jsonSerializer = new JsonSerializer(objectMapper);
-            QueueingConsumer resultConsumer = new QueueingConsumer(channel);
-            channel.basicConsume(CrawlerProtocol.RESULT_QUEUE_NAME, true, resultConsumer);
-            QueueingConsumer taskProgressConsumer = new QueueingConsumer(channel);
-            channel.basicConsume(CrawlerProtocol.TASK_PROGRESS_QUEUE_NAME, true, taskProgressConsumer);
-            ManagementService managementService = new ManagementService(
-                    jsonSerializer, 
-                    channel, 
-                    resultConsumer, 
-                    taskProgressConsumer);
-            
-            return managementService;
-        } catch(IOException e) {
-            throw new RuntimeException(e);
-        }
+        Channel channel = makeChannel(rabbitHostName);
+        ObjectMapper objectMapper = new ObjectMapper();
+        JsonSerializer jsonSerializer = new JsonSerializer(objectMapper);
+        
+        MessageDestinationFactory destinationFactory = new MessageDestinationFactory(channel, jsonSerializer);
+        MessageDestination<Task> taskDestination = destinationFactory
+                .makeMessageDestination(CrawlerProtocol.TASK_QUEUE_NAME, Task.class);
+        MessageDestination<ProgressMessage> taskProgressDestination = destinationFactory
+                .makeMessageDestination(CrawlerProtocol.TASK_PROGRESS_QUEUE_NAME, ProgressMessage.class);
+        
+        MessageSourceFactory sourceFactory = new MessageSourceFactory(channel, jsonSerializer);
+        MessageSource<String> resultSource = sourceFactory
+                .makeMessageSource(CrawlerProtocol.RESULT_QUEUE_NAME, String.class);
+        MessageSource<ProgressMessage> taskProgressSource = sourceFactory.makeMessageSource(
+                CrawlerProtocol.TASK_PROGRESS_QUEUE_NAME,
+                ProgressMessage.class);
+        
+        ManagementService managementService = new ManagementService(
+                taskDestination,
+                taskProgressDestination,
+                resultSource,
+                taskProgressSource);
+        
+        return managementService;
     }
     
     private static WorkerService makeWorkerService(String rabbitHostName) {
-        try {
-            Channel channel = makeChannel(rabbitHostName);
-            ObjectMapper objectMapper = new ObjectMapper();
-            JsonSerializer jsonSerializer = new JsonSerializer(objectMapper);
-            QueueingConsumer taskConsumer = new QueueingConsumer(channel);
-            channel.basicConsume(CrawlerProtocol.TASK_QUEUE_NAME, true, taskConsumer);
-            WorkerService workerService = new WorkerService(jsonSerializer, channel, taskConsumer);
-            return workerService;
-        } catch(IOException e) {
-            throw new RuntimeException(e);
-        }
+        Channel channel = makeChannel(rabbitHostName);
+        ObjectMapper objectMapper = new ObjectMapper();
+        JsonSerializer jsonSerializer = new JsonSerializer(objectMapper);
+        
+        MessageDestinationFactory destinationFactory = new MessageDestinationFactory(channel, jsonSerializer);
+        MessageDestination<Task> taskDestination = destinationFactory
+                .makeMessageDestination(CrawlerProtocol.TASK_QUEUE_NAME, Task.class);
+        MessageDestination<ProgressMessage> taskProgressDestination = destinationFactory
+                .makeMessageDestination(CrawlerProtocol.TASK_PROGRESS_QUEUE_NAME, ProgressMessage.class);
+        MessageDestination<String> resultDestination = destinationFactory
+                .makeMessageDestination(CrawlerProtocol.RESULT_QUEUE_NAME, String.class);
+        
+        MessageSourceFactory sourceFactory = new MessageSourceFactory(channel, jsonSerializer);
+        MessageSource<Task> taskSource = sourceFactory
+                .makeMessageSource(CrawlerProtocol.TASK_QUEUE_NAME, Task.class);
+        
+        WorkerService workerService = new WorkerService(
+                taskDestination,
+                taskProgressDestination,
+                resultDestination,
+                taskSource);
+        
+        return workerService;        
     }
         
     private static Channel makeChannel(String rabbitHostName) {
